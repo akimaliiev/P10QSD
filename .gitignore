@@ -1,0 +1,67 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.so
+*.o
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+htmlcov/
+.tox/
+
+# Editors and IDEs
+.idea/  # JetBrains IDEs (e.g., PyCharm)
+.vscode/ # VS Code
+*.swp
+*~
+.DS_Store # macOS system files
+
+# Python specific testing and linting
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+.nox/
+
+# Data and model outputs (PyTorch/ML specific)
+# Ignore generated data, logs, and saved model checkpoints
+data/
+outputs/
+logs/
+checkpoints/
+runs/ # Often used by TensorBoard or MLflow
+
+# Model files
+*.pth # PyTorch model checkpoint files
+*.pkl
+*.pt
+*.bin
+*.onnx
+
+# Specific directories used in some PyTorch projects
+results/
+pretrained/
+temp/
+
+# Secrets and credentials
+.env
+.flaskenv
+config.yaml
+*.enc
+
+# Markdown files
+**/*.md
+
+# CSV files
+**/*.csv

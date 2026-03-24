@@ -1,0 +1,13 @@
+numpy
+pandas
+scikit-learn
+yfinance
+hydra-core
+pytest
+ruff
+black
+joblib
+matplotlib
+seaborn
+lightgbm
+tqdm
