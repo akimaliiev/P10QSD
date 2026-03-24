@@ -127,7 +127,7 @@ def main(cfg: DictConfig) -> None:
                             f"section_{section}", None
                         )
 
-                    record["document_text"] = text_content
+                    # record["document_text"] = text_content
 
                     records.append(record)
                 except Exception as exc:
