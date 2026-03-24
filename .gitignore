@@ -57,7 +57,7 @@ temp/
 # Secrets and credentials
 .env
 .flaskenv
-config.yaml
+# config.yaml
 *.enc
 
 # Markdown files
