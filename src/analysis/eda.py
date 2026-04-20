@@ -168,7 +168,7 @@ def _plot_contagion_signal(df, output_dir):
     axes[0].set_title("Distribution of sector contagion signal", fontsize=12)
     axes[0].set_xlabel("Average peer cosine similarity (same sector, same quarter)")
     df_t = df.dropna(subset=["sector_contagion"]).copy()
-    df_t["cq"] = pd.qcut(df_t["sector_contagion"], q=5, labels=["Q1","Q2","Q3","Q4","Q5"])
+    df_t["cq"] = pd.qcut(df_t["sector_contagion"], q=5, duplicates="drop")
     ubq = df_t.groupby("cq")["target"].mean()
     axes[1].bar(ubq.index.astype(str), ubq.values, color=["#C44E52" if v<0.5 else "#4C72B0" for v in ubq.values], edgecolor="white")
     axes[1].axhline(0.5, color="gray", linestyle="--")
