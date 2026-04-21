@@ -12,3 +12,7 @@ seaborn
 lightgbm
 tqdm
 edgartools==5.25.1
+xgboost
+statsmodels
+sentence-transformers>=2.7.0
+torch>=2.1.0

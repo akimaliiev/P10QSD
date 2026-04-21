@@ -72,10 +72,16 @@ def _extract_section_with_fallback(filing, sections: list) -> dict:
         # If all sections are None/empty, fall back to full document text
         if not any(section_texts.values()):
             logger.info("Section extraction failed, falling back to full text search")
+            # Keywords to locate each section in raw text
+            section_keywords = {
+                "part_ii_item_1a": ["ITEM 1A", "Item 1A", "RISK FACTORS", "Risk Factors"],
+                "part_i_item_2":   ["ITEM 2", "Item 2", "MANAGEMENT'S DISCUSSION",
+                                    "Management's Discussion and Analysis"],
+            }
             try:
                 full_text = doc.text(clean=True, include_tables=False, table_max_col_width=200)
                 for section in sections:
-                    keywords = ["ITEM 1A", "Item 1A", "RISK FACTORS", "Risk Factors"]
+                    keywords = section_keywords.get(section, [f"ITEM {section}", f"Item {section}"])
                     start_idx = -1
                     for kw in keywords:
                         idx = full_text.find(kw)
@@ -84,7 +90,7 @@ def _extract_section_with_fallback(filing, sections: list) -> dict:
                             break
 
                     if start_idx != -1:
-                        # Take up to 15000 chars from that point (typical Item 1A length)
+                        # Take up to 15000 chars from that point
                         section_texts[f"section_{section}"] = full_text[start_idx:start_idx + 15000]
                         logger.info("Fallback succeeded for section %s", section)
                     else:

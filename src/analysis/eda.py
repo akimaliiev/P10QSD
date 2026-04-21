@@ -2,6 +2,8 @@
 eda.py - Exploratory Data Analysis for the filing-aligned dataset.
 Addresses professor concern (2): understanding data distribution.
 Saves all plots to outputs/eda/
+
+Also provides plot_caar() — CAAR event study callable from baseline.py.
 """
 import os
 import logging
@@ -184,6 +186,137 @@ def _print_summary_stats(df):
     logger.info(f"Cosine sim: mean={df['cosine_sim_prev'].mean():.4f} median={df['cosine_sim_prev'].median():.4f} std={df['cosine_sim_prev'].std():.4f}")
     for regime, grp in df.groupby("regime"): logger.info(f"  {regime:12s}: {grp['target'].mean():.1%} up (n={len(grp)})")
     logger.info("="*60)
+
+def plot_caar(test_pred_df, output_dir, data_start="2022-01-01", data_end="2025-12-31"):
+    """
+    Cumulative Average Abnormal Return (CAAR) event study.
+
+    For each filing in test_pred_df, computes daily abnormal returns
+    (stock − SPY) for t+1 to t+20, then plots the CAAR separately for
+    model-predicted-up vs model-predicted-down filings with ±1 SE bands.
+
+    Parameters
+    ----------
+    test_pred_df : pd.DataFrame
+        Columns required: filed_at, ticker, y_pred
+    output_dir : str
+        Directory to save the PNG
+    data_start, data_end : str
+        Date range for yfinance download
+    """
+    import yfinance as yf
+
+    os.makedirs(output_dir, exist_ok=True)
+    test_pred_df = test_pred_df.copy()
+    test_pred_df["filed_at"] = pd.to_datetime(test_pred_df["filed_at"])
+
+    tickers = test_pred_df["ticker"].unique().tolist()
+    logger.info(f"CAAR: downloading prices for {len(tickers)} tickers + SPY ...")
+
+    prices = {}
+    for ticker in tickers + ["SPY"]:
+        try:
+            pdf = yf.download(ticker, start=data_start, end=data_end,
+                               auto_adjust=True, progress=False)
+            if isinstance(pdf.columns, pd.MultiIndex):
+                pdf.columns = pdf.columns.get_level_values(0)
+            prices[ticker] = pdf["Close"].dropna().sort_index()
+        except Exception:
+            pass
+
+    spy = prices.get("SPY", None)
+    if spy is None:
+        logger.warning("CAAR: SPY data unavailable — skipping plot.")
+        return
+
+    HORIZON = 20
+    up_ars, down_ars = [], []   # list of arrays, one per filing
+
+    for _, row in test_pred_df.iterrows():
+        ticker = row["ticker"]
+        filing_date = row["filed_at"]
+        y_pred = int(row["y_pred"])
+
+        if ticker not in prices:
+            continue
+
+        stock = prices[ticker]
+        fut_stock = stock[stock.index >= filing_date]
+        fut_spy   = spy[spy.index >= filing_date]
+
+        if len(fut_stock) < HORIZON + 1 or len(fut_spy) < HORIZON + 1:
+            continue
+
+        # Daily returns t+1 … t+HORIZON (pct_change then drop the t=0 NaN)
+        stock_daily = fut_stock.iloc[:HORIZON + 1].pct_change().dropna().values
+        spy_daily   = fut_spy.iloc[:HORIZON + 1].pct_change().dropna().values
+
+        n = min(len(stock_daily), len(spy_daily), HORIZON)
+        if n < 1:
+            continue
+
+        ar = stock_daily[:n] - spy_daily[:n]
+        if y_pred == 1:
+            up_ars.append(ar)
+        else:
+            down_ars.append(ar)
+
+    def _to_caar(ar_list):
+        if not ar_list:
+            return None, None, 0
+        max_len = max(len(a) for a in ar_list)
+        mat = np.full((len(ar_list), max_len), np.nan)
+        for i, a in enumerate(ar_list):
+            mat[i, :len(a)] = a
+        mean_ar = np.nanmean(mat, axis=0)
+        se_ar   = np.nanstd(mat, axis=0) / np.sqrt(np.sum(~np.isnan(mat), axis=0).clip(1))
+        caar    = np.nancumsum(mean_ar)
+        # Propagate SE as cumulative sum of per-day SE (conservative)
+        caar_se = np.nancumsum(se_ar)
+        return caar, caar_se, len(ar_list)
+
+    up_caar,   up_se,   n_up   = _to_caar(up_ars)
+    down_caar, down_se, n_down = _to_caar(down_ars)
+
+    if up_caar is None and down_caar is None:
+        logger.warning("CAAR: no valid filings — skipping plot.")
+        return
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    days = np.arange(1, HORIZON + 1)
+
+    if up_caar is not None:
+        n = len(up_caar)
+        ax.plot(days[:n], up_caar[:n] * 100, color="#4C72B0", linewidth=2,
+                label=f"Predicted Up (n={n_up})")
+        ax.fill_between(days[:n],
+                        (up_caar[:n] - up_se[:n]) * 100,
+                        (up_caar[:n] + up_se[:n]) * 100,
+                        alpha=0.18, color="#4C72B0")
+
+    if down_caar is not None:
+        n = len(down_caar)
+        ax.plot(days[:n], down_caar[:n] * 100, color="#C44E52", linewidth=2,
+                label=f"Predicted Down (n={n_down})")
+        ax.fill_between(days[:n],
+                        (down_caar[:n] - down_se[:n]) * 100,
+                        (down_caar[:n] + down_se[:n]) * 100,
+                        alpha=0.18, color="#C44E52")
+
+    ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
+    ax.set_xlabel("Trading days after filing (t+1 to t+20)")
+    ax.set_ylabel("CAAR (%)")
+    ax.set_title("Cumulative Average Abnormal Return (CAAR) by Model Prediction\n"
+                 "Abnormal return = stock daily return − SPY daily return", fontsize=12)
+    ax.legend(fontsize=11)
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, "caar_event_study.png")
+    plt.savefig(out_path, dpi=150)
+    plt.close()
+    logger.info(f"Saved: {out_path}")
+
 
 @hydra.main(version_base=None, config_path="../../conf", config_name="config")
 def main(cfg: DictConfig):
