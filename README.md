@@ -1,4 +1,5 @@
 # P10QSD — Do Words Move Markets?
+
 ### Predicting Abnormal Stock Returns from Quarter-over-Quarter Changes in SEC 10-Q Filings
 
 > **Core question:** Do changes in the language of SEC 10-Q Risk Factors predict whether a stock will outperform or underperform the market in the following week?
@@ -9,11 +10,11 @@
 
 ## Why This Project Exists
 
-Stock prediction models overwhelmingly rely on price and volume data — moving averages, RSI, momentum, volatility. These features capture what the market *has already priced in*. They are blind to the qualitative information companies disclose through regulatory filings.
+Stock prediction models overwhelmingly rely on price and volume data — moving averages, RSI, momentum, volatility. These features capture what the market _has already priced in_. They are blind to the qualitative information companies disclose through regulatory filings.
 
 Every publicly traded company must file a 10-Q quarterly report with the SEC. Item 1A of this filing — the Risk Factors section — is legally required to be updated whenever the company's risk landscape changes materially. This creates a unique signal: when a company rewrites its risk disclosures, it is telling investors something has changed, often before that change appears in the financial numbers.
 
-Prior work (Cohen, Malloy & Nguyen, 2020, *Journal of Finance*) showed that investors largely ignore these changes — leading to delayed and predictable price reactions. We build a machine learning pipeline to systematically exploit this inattention across 186 S&P 500 companies over 10 years.
+Prior work (Cohen, Malloy & Nguyen, 2020, _Journal of Finance_) showed that investors largely ignore these changes — leading to delayed and predictable price reactions. We build a machine learning pipeline to systematically exploit this inattention across 186 S&P 500 companies over 10 years.
 
 ---
 
@@ -47,56 +48,56 @@ When companies in a sector simultaneously rewrite their risk factors, the inform
 
 ### Main Results (186 companies, 1,082 test samples, 2023–2024)
 
-| Model | Accuracy | Macro F1 | p-value | Significant? |
-|---|---|---|---|---|
-| Majority-class baseline | 46.3% | — | — | — |
-| **Logistic Regression** | **51.7%** | **0.515** | **0.003** | ✅ Yes |
-| LightGBM | 50.3% | 0.503 | 0.029 | ✅ Yes |
-| Ensemble (soft voting) | 48.7% | 0.487 | 0.128 | No |
-| XGBoost | 48.7% | 0.486 | 0.143 | No |
-| Random Forest | 48.2% | 0.481 | 0.173 | No |
+| Model                   | Accuracy  | Macro F1  | p-value   | Significant? |
+| ----------------------- | --------- | --------- | --------- | ------------ |
+| Majority-class baseline | 46.3%     | —         | —         | —            |
+| **Logistic Regression** | **51.7%** | **0.515** | **0.003** | ✅ Yes       |
+| LightGBM                | 50.3%     | 0.503     | 0.029     | ✅ Yes       |
+| Ensemble (soft voting)  | 48.7%     | 0.487     | 0.128     | No           |
+| XGBoost                 | 48.7%     | 0.486     | 0.143     | No           |
+| Random Forest           | 48.2%     | 0.481     | 0.173     | No           |
 
 Two independent models are statistically significant. The baseline is 46.3% (not 50%) because abnormal returns in 2023–2024 were skewed by the S&P 500 mega-cap rally — most stocks underperformed the index in absolute terms. Our +5.4pp lift over baseline with p=0.003 is genuine.
 
 ### Ablation Study — The Core Finding
 
-| Feature Group | Accuracy | Macro F1 | Features |
-|---|---|---|---|
-| **LM sentiment only** | **52.8%** | **0.525** | 6 |
-| Text only (no price) | 51.5% | 0.514 | 17 |
-| All features combined | 51.2% | 0.512 | 24 |
-| Price only | 46.9% | 0.449 | 7 |
+| Feature Group         | Accuracy  | Macro F1  | Features |
+| --------------------- | --------- | --------- | -------- |
+| **LM sentiment only** | **52.8%** | **0.525** | 6        |
+| Text only (no price)  | 51.5%     | 0.514     | 17       |
+| All features combined | 51.2%     | 0.512     | 24       |
+| Price only            | 46.9%     | 0.449     | 7        |
 
 **LM sentiment features alone outperform all price-based technical indicators by +0.076 F1.** More striking: adding price features back actually slightly reduces performance. For predicting company-specific abnormal returns, the text signal is purer without noise from momentum and volatility.
 
 ### Walk-Forward Rolling Cross-Validation (3-year window, 7 folds)
 
-| Test Year | Accuracy | Macro F1 |
-|---|---|---|
-| 2018 | 49.5% | 0.494 |
-| 2019 | 48.1% | 0.481 |
-| 2020 | 50.4% | 0.487 |
-| 2021 | 49.1% | 0.489 |
-| 2022 | 48.0% | 0.477 |
-| 2023 | 48.2% | 0.473 |
-| 2024 | 50.3% | 0.496 |
-| **Mean** | **49.1%** | **0.485** |
-| **Std** | **±1.0%** | **±0.009** |
+| Test Year | Accuracy  | Macro F1   |
+| --------- | --------- | ---------- |
+| 2018      | 49.5%     | 0.494      |
+| 2019      | 48.1%     | 0.481      |
+| 2020      | 50.4%     | 0.487      |
+| 2021      | 49.1%     | 0.489      |
+| 2022      | 48.0%     | 0.477      |
+| 2023      | 48.2%     | 0.473      |
+| 2024      | 50.3%     | 0.496      |
+| **Mean**  | **49.1%** | **0.485**  |
+| **Std**   | **±1.0%** | **±0.009** |
 
 Remarkably stable across all 7 market regimes including COVID crash (2020), Fed tightening (2022), and recovery (2023–2024). Standard deviation of ±1.0% is the tightest we observed at any scale.
 
 ### LR Coefficients — What the Model Learned
 
-| Feature | Direction | Coefficient | Interpretation |
-|---|---|---|---|
-| `lm_litigious` | → Down | −0.031 | Legal risk language predicts underperformance |
-| `lm_positive` | → Down | −0.030 | Optimistic language predicts underperformance |
-| `price_return_20d` | → Down | −0.028 | Mean reversion: recent winners underperform |
-| `text_length_norm` | → Down | −0.024 | Longer risk sections = more disclosed risks |
-| `lm_uncertainty` | → Down | −0.019 | Hedging language predicts underperformance |
-| `lm_negative` | → Down | −0.017 | Negative language predicts underperformance |
-| `price_volatility_20d` | → Up | +0.015 | High volatility stocks outperform after filings |
-| `cosine_sim_prev` | → Down | −0.008 | No text change = ignoring real risks |
+| Feature                | Direction | Coefficient | Interpretation                                  |
+| ---------------------- | --------- | ----------- | ----------------------------------------------- |
+| `lm_litigious`         | → Down    | −0.031      | Legal risk language predicts underperformance   |
+| `lm_positive`          | → Down    | −0.030      | Optimistic language predicts underperformance   |
+| `price_return_20d`     | → Down    | −0.028      | Mean reversion: recent winners underperform     |
+| `text_length_norm`     | → Down    | −0.024      | Longer risk sections = more disclosed risks     |
+| `lm_uncertainty`       | → Down    | −0.019      | Hedging language predicts underperformance      |
+| `lm_negative`          | → Down    | −0.017      | Negative language predicts underperformance     |
+| `price_volatility_20d` | → Up      | +0.015      | High volatility stocks outperform after filings |
+| `cosine_sim_prev`      | → Down    | −0.008      | No text change = ignoring real risks            |
 
 Every LM text feature predicts **down**. Companies using more optimistic, litigious, or uncertain language in their Risk Factors section underperform the market in the following week. This is the "cheap talk" effect: positive language in mandatory risk disclosures is not reassuring — it is predictive of trouble.
 
@@ -104,16 +105,16 @@ Every LM text feature predicts **down**. Companies using more optimistic, litigi
 
 ## Dataset
 
-| Property | Value |
-|---|---|
-| Companies | 186 S&P 500 constituents |
-| Sectors | Technology, Finance, Healthcare, Consumer, Energy, Industrial |
-| Filing period | April 2015 — December 2024 |
-| Total observations | 4,840 (1 per 10-Q filing) |
-| Training set | 3,758 filings (pre-2023) |
-| Test set | 1,082 filings (2023–2024) |
-| Target balance | 49.8% up / 50.2% down (near perfect) |
-| Cosine sim median | 0.918 (most quarters barely change) |
+| Property           | Value                                                         |
+| ------------------ | ------------------------------------------------------------- |
+| Companies          | 186 S&P 500 constituents                                      |
+| Sectors            | Technology, Finance, Healthcare, Consumer, Energy, Industrial |
+| Filing period      | April 2015 — December 2024                                    |
+| Total observations | 4,840 (1 per 10-Q filing)                                     |
+| Training set       | 3,758 filings (pre-2023)                                      |
+| Test set           | 1,082 filings (2023–2024)                                     |
+| Target balance     | 49.8% up / 50.2% down (near perfect)                          |
+| Cosine sim median  | 0.918 (most quarters barely change)                           |
 
 The median cosine similarity of 0.918 is itself informative: most companies copy-paste their risk factors quarter to quarter. The ~8% of filings with cosine similarity below 0.80 represent genuine rewrites — and these are where the predictive signal is strongest.
 
@@ -123,30 +124,30 @@ The median cosine similarity of 0.918 is itself informative: most companies copy
 
 ### Text features (from Item 1A Risk Factors)
 
-| Feature | Description |
-|---|---|
-| `cosine_sim_prev` | TF-IDF cosine similarity between current and previous quarter's text |
-| `risk_drift_4q` | Rolling 4-quarter trend — is this company rewriting more or less over time? |
-| `filing_surprise` | Company-specific z-score — how unusual is this quarter's change? |
-| `sector_contagion` | Average peer cosine similarity within ±45 days (novel) |
-| `lm_negative` | Loughran-McDonald negative word ratio |
-| `lm_positive` | LM positive word ratio |
-| `lm_uncertainty` | LM uncertainty/hedging word ratio |
-| `lm_litigious` | LM legal/regulatory risk word ratio |
-| `lm_constraining` | LM constraining word ratio |
-| `lm_net_sentiment` | (positive − negative) / (positive + negative + 1) |
-| `lm_*_delta` | Quarter-over-quarter change in each LM score |
-| `lm_neg_x_cosine` | Interaction: negative sentiment × text change magnitude |
-| `text_price_divergence` | Interaction: positive text tone vs falling price |
+| Feature                 | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `cosine_sim_prev`       | TF-IDF cosine similarity between current and previous quarter's text        |
+| `risk_drift_4q`         | Rolling 4-quarter trend — is this company rewriting more or less over time? |
+| `filing_surprise`       | Company-specific z-score — how unusual is this quarter's change?            |
+| `sector_contagion`      | Average peer cosine similarity within ±45 days (novel)                      |
+| `lm_negative`           | Loughran-McDonald negative word ratio                                       |
+| `lm_positive`           | LM positive word ratio                                                      |
+| `lm_uncertainty`        | LM uncertainty/hedging word ratio                                           |
+| `lm_litigious`          | LM legal/regulatory risk word ratio                                         |
+| `lm_constraining`       | LM constraining word ratio                                                  |
+| `lm_net_sentiment`      | (positive − negative) / (positive + negative + 1)                           |
+| `lm_*_delta`            | Quarter-over-quarter change in each LM score                                |
+| `lm_neg_x_cosine`       | Interaction: negative sentiment × text change magnitude                     |
+| `text_price_divergence` | Interaction: positive text tone vs falling price                            |
 
 ### Price features (at filing date, no lookahead)
 
-| Feature | Description |
-|---|---|
+| Feature                  | Description                                       |
+| ------------------------ | ------------------------------------------------- |
 | `price_return_1d/5d/20d` | Momentum over 1, 5, 20 trading days before filing |
-| `price_volatility_20d` | Annualized 20-day realized volatility |
-| `price_ma_ratio_5/20` | Price relative to 5-day and 20-day moving average |
-| `price_rsi` | 14-day Relative Strength Index |
+| `price_volatility_20d`   | Annualized 20-day realized volatility             |
+| `price_ma_ratio_5/20`    | Price relative to 5-day and 20-day moving average |
+| `price_rsi`              | 14-day Relative Strength Index                    |
 
 ---
 
@@ -179,12 +180,6 @@ venv/bin/python -m src.analysis.eda
 # Step 4: Train and evaluate all models (walk-forward CV, grid search, ablation)
 venv/bin/python -m src.models.baseline
 
-# Step 5: Sparse model + sector analysis + portfolio evaluation
-venv/bin/python -m src.models.final_analysis
-
-# Optional: LSTM temporal model over per-company sequences
-venv/bin/python -m src.models.temporal_model
-
 # Scale to full S&P 500 overnight (checkpointed)
 caffeinate -i bash scale_to_sp500.sh
 ```
@@ -197,19 +192,27 @@ caffeinate -i bash scale_to_sp500.sh
 P10QSD/
 ├── conf/
 │   └── config.yaml              # Hydra config (tickers, dates, model params)
+├── data/                        # Raw and processed datasets
+├── models/                      # Saved models, prediction outputs, results
+├── outputs/                     # Generated logs, figures, and EDA plots
 ├── src/
 │   ├── analysis/
-│   │   └── eda.py               # EDA: 7 plots across time, sector, regime
+│   │   └── eda.py               # EDA: plots across time, sector, regime
 │   ├── dataloader/
+│   │   ├── filing_dataset.py    # Filing-aligned dataset builder
 │   │   ├── loader.py            # yfinance price downloader
-│   │   ├── sec_loader.py        # SEC EDGAR 10-Q downloader (checkpointed)
-│   │   └── filing_dataset.py    # Filing-aligned dataset builder
+│   │   └── sec_loader.py        # SEC EDGAR 10-Q downloader (checkpointed)
 │   ├── features/
-│   │   └── lm_features.py       # Loughran-McDonald finance sentiment
+│   │   ├── engineering.py       # Core feature engineering pipeline
+│   │   ├── finbert_features.py  # FinBERT embeddings extraction
+│   │   ├── lm_features.py       # Loughran-McDonald finance sentiment
+│   │   └── sec_features.py      # SEC item extraction and parsing
 │   └── models/
-│       ├── baseline.py          # Walk-forward CV, grid search, ensemble, ablation
-│       ├── temporal_model.py    # LSTM over filing sequences
-│       └── final_analysis.py    # Sparse model, sector models, portfolio eval
+│       └── baseline.py          # Walk-forward CV, grid search, ensemble, ablation
+├── tests/                       # Pytest unit tests
+├── AGENTS.md                    # Agent operational guidelines
+├── PROJECT.md                   # Project context and architectural details
+├── explore_mda.py               # MD&A exploration script
 ├── sp500_50.txt                 # 50-company subset for quick experiments
 ├── sp500_tickers.txt            # Full 503 S&P 500 tickers
 └── scale_to_sp500.sh            # One-command overnight full-scale run
@@ -233,11 +236,11 @@ P10QSD/
 
 ## Literature Foundation
 
-- Cohen, Malloy & Nguyen (2020). *Lazy Prices.* Journal of Finance — investors don't read filings, changes predict returns
-- Loughran & McDonald (2011). *When is a Liability not a Liability?* Journal of Finance — finance-specific sentiment wordlists
-- Li (2010). *The Information Content of Forward-Looking Statements.* Journal of Accounting Research
-- Yang et al. (2020). *FinBERT.* arXiv:2006.08097 — BERT fine-tuned on financial text
-- Kogan et al. (2009). *Predicting Risk from Financial Reports.* NAACL-HLT
+- Cohen, Malloy & Nguyen (2020). _Lazy Prices._ Journal of Finance — investors don't read filings, changes predict returns
+- Loughran & McDonald (2011). _When is a Liability not a Liability?_ Journal of Finance — finance-specific sentiment wordlists
+- Li (2010). _The Information Content of Forward-Looking Statements._ Journal of Accounting Research
+- Yang et al. (2020). _FinBERT._ arXiv:2006.08097 — BERT fine-tuned on financial text
+- Kogan et al. (2009). _Predicting Risk from Financial Reports._ NAACL-HLT
 
 ---
 
